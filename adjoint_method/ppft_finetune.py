@@ -185,7 +185,7 @@ def finetune_with_target(
 
     if not train_all_params:
         freeze_parameters_check_missing(
-            score_model, exclude_patterns=[]
+            score_model, exclude_patterns=["encoder.layers.0", "encoder.layers.7"]
         )
     
     score_model.train()
@@ -265,7 +265,7 @@ def finetune_with_target(
         loss.backward()
         assert not torch.isnan(loss).any(), "Loss contains NaN values"
         optimizer.step()
-        
+
         # reset steepness
         target_info.steepness = STEEPNESS
 
