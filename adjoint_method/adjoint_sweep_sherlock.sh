@@ -65,6 +65,6 @@ for seed in 0; do
     for i in "${!pdb_list[@]}"; do
         pdb="${pdb_list[$i]}"
         p_fold_target="${p_fold_target_list[$i]}"
-        python ppft_finetune.py --pdb_path $pdb_dir/"$pdb" --output_dir ./adjoint_sweep/"$pdb"_N${N_rollout}_t${mid_t} --p_fold_target "$p_fold_target" --rollout_config_path ./adjoint_N50_t0.001.yaml --seed $seed --n_epochs 200 --batch_size 80 --use_checkpointing --cache_embeds_dir "$PROJECT_ROOT_DIR"/.cache/bioemu/embeds --cache_so3_dir "$PROJECT_ROOT_DIR"/.cache/bioemu/so3 --learning_rate 1e-5
+        python ppft_finetune.py --pdb_path $pdb_dir/"$pdb" --output_dir ./adjoint_sweep_N50_t0.001_freeze_steepness10/"$pdb" --p_fold_target "$p_fold_target" --rollout_config_path ./adjoint_N50_t0.001.yaml --seed $seed --n_epochs 200 --batch_size 80 --use_checkpointing --cache_embeds_dir "$PROJECT_ROOT_DIR"/.cache/bioemu/embeds --cache_so3_dir "$PROJECT_ROOT_DIR"/.cache/bioemu/so3 --learning_rate 1e-5 --ft_steepness 10.0
     done
 done
