@@ -5,6 +5,7 @@ import mdtraj
 import torch
 import torch.nn as nn
 import yaml
+import pickle
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 from bioemu.chemgraph import ChemGraph
@@ -19,7 +20,7 @@ from bioemu.training.foldedness import (
     foldedness_from_fnc,
 )
 from bioemu.training.loss import calc_ppft_loss
-import pickle
+
 
 def sample_and_compute_metrics(
     reference_info: ReferenceInfo,
@@ -66,7 +67,7 @@ def sample_and_plot(
     ckpt_path: Path | None = None,
     model_config_path: Path | None = None,
     denoiser_config_path: Path | None = None,
-    num_samples: int = 300,
+    num_samples: int = 500,
     cache_embeds_dir: Path | None = None,
 ) -> None:
     """Generate samples, compute metrics, and plot their distributions."""
@@ -154,7 +155,6 @@ def finetune_with_target(
     use_checkpointing: bool = False,
     cache_embeds_dir: Path | None = None,
     cache_so3_dir: Path | None = None,
-    batch_size: int = 100,
 ) -> tuple[Path, Path]:
     """Finetune the pretrained BioEmu model to sample structures with mean foldedness p_fold_target."""
     output_dir = Path(OUTPUT_DIR) / f"target_{p_fold_target:.2f}_seed_{seed}"
@@ -182,7 +182,6 @@ def finetune_with_target(
     freeze_parameters_check_missing(
         score_model, exclude_patterns=["encoder.layers.0", "encoder.layers.7"]
     )
-    
     score_model.train()
     system_id = reference_pdb.stem
     chemgraph = (
@@ -195,7 +194,7 @@ def finetune_with_target(
     )
     optimizer = torch.optim.Adam(
         score_model.parameters(),
-        lr=3e-6,
+        lr=1e-5,
         eps=1e-6,
     )
 
@@ -206,7 +205,7 @@ def finetune_with_target(
 
     # Validation function
     def validate(
-        iteration: int, num_samples: int = 500, cache_embeds_dir: Path | None = None
+        iteration: int, num_samples: int = 100, cache_embeds_dir: Path | None = None
     ) -> float:
         """Generate samples and compute mean foldedness for validation."""
         print(f"Running validation at iteration {iteration}...")
@@ -235,24 +234,19 @@ def finetune_with_target(
         temp_ckpt.unlink()
 
         return mean_fold
-    pbar = tqdm(range(n_steps_train), desc="Training")
-    record_grad_steps = set()
-    if "record_grad_steps" in rollout_config:
-        record_grad_steps = set(rollout_config["record_grad_steps"])
-    else:
-        record_grad_steps = set(range(1, rollout_config["N_rollout"] + 1))
 
-    for i in pbar:
+    for i in tqdm(range(n_steps_train), desc="Training"):
+
         optimizer.zero_grad()
         loss = calc_ppft_loss(
             score_model=score_model,
             sdes=sdes,
-            batch=[chemgraph],
-            n_replications=batch_size,
+            batch=[chemgraph] * 10,
+            n_replications=4,
             mid_t=rollout_config["mid_t"],
             target_info_lookup={system_id: target_info},
             N_rollout=rollout_config["N_rollout"],
-            record_grad_steps=record_grad_steps,
+            record_grad_steps=rollout_config["record_grad_steps"],
             reference_info_lookup={system_id: reference_info},
         )
         loss.backward()
@@ -261,9 +255,9 @@ def finetune_with_target(
 
         # Record training loss
         train_losses.append(loss.item())
-        # add loss to the end of tqdm description
-        pbar.set_postfix(loss=f"{loss.item():.4f}")
-        
+        # add loss to tqdm
+        tqdm.write(f"  Loss: {loss.item():.4f}")
+
         # Run validation periodically.
         if i % 20 == 0:
             with torch.random.fork_rng():
@@ -321,9 +315,8 @@ if __name__ == "__main__":
     parser.add_argument("--cache_embeds_dir", type=str, default=None)
     parser.add_argument("--cache_so3_dir", type=str, default=None)
     parser.add_argument("--use_checkpointing", action="store_true")
-    parser.add_argument("--n_epochs", type=int, default=500)
-    parser.add_argument("--batch_size", type=int, default=40)
     parser.add_argument("--seed", type=int, default=0)
+
     args = parser.parse_args()
 
     STEEPNESS = 10.0
@@ -348,7 +341,6 @@ if __name__ == "__main__":
         output_dir=pretrained_samples_dir,
         ckpt_path=None,
         cache_embeds_dir=args.cache_embeds_dir,
-        num_samples=500
     )
 
     # For comparison, also show FNC and foldedness when sampling with the fast 'rollout' denoiser.
@@ -359,7 +351,6 @@ if __name__ == "__main__":
         ckpt_path=None,
         denoiser_config_path=rollout_config_path,
         cache_embeds_dir=args.cache_embeds_dir,
-        num_samples=500
     )
 
     with rollout_config_path.open(encoding="utf-8") as f:
@@ -367,12 +358,11 @@ if __name__ == "__main__":
 
     finetuned_checkpoint_path, model_config_path = finetune_with_target(
         p_fold_target=args.p_fold_target,
-        n_steps_train=args.n_epochs,
+        n_steps_train=200,
+        seed=args.seed,
         use_checkpointing=args.use_checkpointing,
         cache_embeds_dir=args.cache_embeds_dir,
         cache_so3_dir=args.cache_so3_dir,
-        batch_size=args.batch_size,
-        seed=args.seed,
     )
 
     plt.figure()
@@ -381,7 +371,6 @@ if __name__ == "__main__":
         output_dir=finetuned_checkpoint_path.with_suffix(".samples"),
         ckpt_path=finetuned_checkpoint_path,
         model_config_path=model_config_path,
-        num_samples=500
     )
 
     plt.figure()
@@ -392,5 +381,4 @@ if __name__ == "__main__":
         model_config_path=model_config_path,
         denoiser_config_path=rollout_config_path,
         cache_embeds_dir=args.cache_embeds_dir,
-        num_samples=500
     )

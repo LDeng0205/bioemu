@@ -1,6 +1,11 @@
 # Vim swap files
 *.swp
 
+adjoint_method/ppft_baseline/
+notebooks/ppft_baseline/
+notebooks/ppft_out/
+datasets/
+adjoint_method/*.yaml
 #vs code
 .vscode
 .vscode/
