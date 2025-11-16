@@ -15,14 +15,6 @@ export BIOEMU_COLABFOLD_DIR=$CONDA_PREFIX
 PROJECT_ROOT_DIR=$(git rev-parse --show-toplevel)
 
 pdb_list=(
-    train_1.pdb
-    train_2.pdb
-    train_3.pdb
-    train_4.pdb
-    train_5.pdb
-)
-
-pdb_list=(
     "6OBK.pdb"
     "2L2D.pdb"
     "XX:run1_0254_0003.pdb"
