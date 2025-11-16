@@ -3,8 +3,8 @@
 #SBATCH --time=50:00:00
 #SBATCH -p btrippe,stat,hns
 #SBATCH --gpus=1
-#SBATCH -c 16
-#SBATCH --mem=180GB
+#SBATCH -c 8
+#SBATCH --mem=16GB
 #SBATCH --output=slurm/%x_%j.out
 #SBATCH --error=slurm/%x_%j.err
 
@@ -29,7 +29,7 @@ unset __conda_setup
 
 conda activate /scratch/groups/btrippe/arthur/conda_envs/bioemu
 
-cd /scratch/groups/btrippe/arthur/projects/bioemu/adjoint_method
+cd /scratch/groups/btrippe/arthur/bioemu/adjoint_method
 
 # Enable ColabFold for WSL2
 export TF_FORCE_UNIFIED_MEMORY="1"
