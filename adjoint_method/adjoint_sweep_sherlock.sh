@@ -58,7 +58,8 @@ p_fold_target_list=(
     0.992
 )
 
-pdb_dir='/data/megascale/AlphaFold_model_PDBs'
+pdb_dir='/home/groups/btrippe/datasets/megascale/AlphaFold_model_PDBs'
+
 PROJECT_ROOT_DIR=$(git rev-parse --show-toplevel)
 for seed in 0; do
     for i in "${!pdb_list[@]}"; do

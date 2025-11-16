@@ -1,0 +1,7 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+_target_: bioemu.training.loss._rollout
+_partial_: true
+mid_t: 0.001
+N_rollout: 50
+record_grad_steps: []
