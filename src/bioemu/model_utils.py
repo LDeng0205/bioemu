@@ -54,7 +54,7 @@ def maybe_download_checkpoint(
     return str(ckpt_path), str(model_config_path)
 
 
-def load_model(ckpt_path: str | Path, model_config_path: str | Path) -> DiGConditionalScoreModel:
+def load_model(ckpt_path: str | Path, model_config_path: str | Path, use_checkpointing: bool = False) -> DiGConditionalScoreModel:
     """Load score model from checkpoint and config."""
     assert os.path.isfile(ckpt_path), f"Checkpoint {ckpt_path} not found"
     assert os.path.isfile(model_config_path), f"Model config {model_config_path} not found"
@@ -65,6 +65,7 @@ def load_model(ckpt_path: str | Path, model_config_path: str | Path) -> DiGCondi
     model_state = torch.load(ckpt_path, map_location="cpu", weights_only=True)
     score_model: DiGConditionalScoreModel = hydra.utils.instantiate(model_config["score_model"])
     score_model.load_state_dict(model_state)
+    score_model.set_checkpointing(use_checkpointing)
     return score_model
 
 

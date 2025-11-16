@@ -320,7 +320,7 @@ def dpm_solver(
         batch_hat = batch.replace(**vals_hat)
 
         # Evaluate score
-        with torch.set_grad_enabled(grad_is_enabled and (i in record_grad_steps)):
+        with torch.set_grad_enabled(grad_is_enabled and ((i + 1) in record_grad_steps)):
             score = get_score(batch=batch_hat, t=t_hat, score_model=score_model, sdes=sdes)
 
         # t_{i-1} in the algorithm is the current t

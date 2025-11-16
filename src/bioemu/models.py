@@ -343,6 +343,7 @@ class DiGConditionalScoreModel(torch.nn.Module):
         max_distance_relative: int = 128,
         dropout: float = 0.1,
         extra_residue_embeds: bool = False,
+        use_checkpointing: bool = False,
     ):
         """
         Args: all passed through to DistributionalGraphormer
@@ -360,6 +361,15 @@ class DiGConditionalScoreModel(torch.nn.Module):
             dropout=dropout,
             extra_residue_embeds=extra_residue_embeds,
         )
+        self._use_checkpointing = use_checkpointing
+
+    @property
+    def use_checkpointing(self) -> bool:
+        return self._use_checkpointing and self.training
+    
+    def set_checkpointing(self, use_checkpointing: bool = True) -> None:
+        """Set whether to use checkpointing for the forward pass."""
+        self._use_checkpointing = use_checkpointing
 
     def forward(self, x: ChemGraph, t: torch.Tensor) -> ChemGraph:
         # NOTE: the DiG structure model uses a time embedding intended for integer time
@@ -378,12 +388,19 @@ class DiGConditionalScoreModel(torch.nn.Module):
         # pos is the translation score, node_orientations is the rotation score in axis
         # angle representation.
         pos_effective = x.pos
-        (pos, node_orientations) = self.model_nn(
-            x=pos_effective,
-            node_orientations=node_orientations_effective,
-            batch_index=x.batch,
-            t=time_effective,
-            context=context,
-        )
+
+        def _run() -> tuple[torch.Tensor, torch.Tensor]:
+            return self.model_nn(
+                x=pos_effective,
+                node_orientations=node_orientations_effective,
+                batch_index=x.batch,  # capture other args from closure
+                t=time_effective,
+                context=context,
+            )
+
+        if self.use_checkpointing:
+            pos, node_orientations = torch.utils.checkpoint.checkpoint(_run, use_reentrant=False)
+        else:
+            pos, node_orientations = _run()
 
         return x.replace(pos=pos, node_orientations=node_orientations)
