@@ -152,6 +152,9 @@ def finetune_with_target(
     p_fold_target: float,
     n_steps_train: int,
     seed: int = 42,
+    learning_rate: float = 3e-6,
+    ft_steepness: float = 10.0,
+    train_all_params: bool = False,
     use_checkpointing: bool = False,
     cache_embeds_dir: Path | None = None,
     cache_so3_dir: Path | None = None,
@@ -180,9 +183,10 @@ def finetune_with_target(
     if hasattr(score_model, "use_checkpointing") and score_model.use_checkpointing:
         print("Score model uses checkpointing!")
 
-    freeze_parameters_check_missing(
-        score_model, exclude_patterns=["encoder.layers.0", "encoder.layers.7"]
-    )
+    if not train_all_params:
+        freeze_parameters_check_missing(
+            score_model, exclude_patterns=[]
+        )
     
     score_model.train()
     system_id = reference_pdb.stem
@@ -196,7 +200,7 @@ def finetune_with_target(
     )
     optimizer = torch.optim.Adam(
         score_model.parameters(),
-        lr=3e-6,
+        lr=learning_rate,
         eps=1e-6,
     )
 
@@ -245,6 +249,8 @@ def finetune_with_target(
 
     for i in pbar:
         optimizer.zero_grad()
+        # set steepness temporarily for training
+        target_info.steepness = ft_steepness
         loss = calc_ppft_loss(
             score_model=score_model,
             sdes=sdes,
@@ -253,12 +259,15 @@ def finetune_with_target(
             mid_t=rollout_config["mid_t"],
             target_info_lookup={system_id: target_info},
             N_rollout=rollout_config["N_rollout"],
-            record_grad_steps=record_grad_steps,
+            record_grad_steps=set(range(1, rollout_config["N_rollout"] + 1)),
             reference_info_lookup={system_id: reference_info},
         )
         loss.backward()
         assert not torch.isnan(loss).any(), "Loss contains NaN values"
         optimizer.step()
+        
+        # reset steepness
+        target_info.steepness = STEEPNESS
 
         # Record training loss
         train_losses.append(loss.item())
@@ -324,6 +333,9 @@ if __name__ == "__main__":
     parser.add_argument("--use_checkpointing", action="store_true")
     parser.add_argument("--n_epochs", type=int, default=500)
     parser.add_argument("--batch_size", type=int, default=40)
+    parser.add_argument("--learning_rate", type=float, default=3e-6)
+    parser.add_argument("--ft_steepness", type=float, default=10.0)
+    parser.add_argument("--train_all_params", action="store_true")
     parser.add_argument("--seed", type=int, default=0)
     args = parser.parse_args()
 
@@ -370,6 +382,9 @@ if __name__ == "__main__":
         p_fold_target=args.p_fold_target,
         n_steps_train=args.n_epochs,
         use_checkpointing=args.use_checkpointing,
+        learning_rate=args.learning_rate,
+        ft_steepness=args.ft_steepness,
+        train_all_params=args.train_all_params,
         cache_embeds_dir=args.cache_embeds_dir,
         cache_so3_dir=args.cache_so3_dir,
         batch_size=args.batch_size,
