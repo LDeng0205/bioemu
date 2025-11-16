@@ -41,6 +41,7 @@ def sample_and_compute_metrics(
         num_samples=num_samples,
         output_dir=output_dir,  # type: ignore
         filter_samples=False,
+        batch_size_100=50,
         ckpt_path=ckpt_path,  # type: ignore
         model_config_path=model_config_path,  # type: ignore
         denoiser_config_path=denoiser_config_path,  # type: ignore
@@ -237,7 +238,7 @@ def finetune_with_target(
         return mean_fold
     pbar = tqdm(range(n_steps_train), desc="Training")
     record_grad_steps = set()
-    if "record_grad_steps" in rollout_config:
+    if "record_grad_steps" in rollout_config and len(set(rollout_config["record_grad_steps"])) > 0:
         record_grad_steps = set(rollout_config["record_grad_steps"])
     else:
         record_grad_steps = set(range(1, rollout_config["N_rollout"] + 1))

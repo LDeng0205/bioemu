@@ -38,7 +38,7 @@ for seed in 0 1 2; do
             for i in "${!pdb_list[@]}"; do
                 pdb="${pdb_list[$i]}"
                 p_fold_target="${p_fold_target_list[$i]}"
-                python ppft_finetune.py --pdb_path $pdb_dir/"$pdb" --output_dir ./ppft_baseline/"$pdb" --p_fold_target "$p_fold_target" --rollout_config_path ./adjoint_N${N_rollout}_t${mid_t}.yaml --seed $seed --n_epochs 200 --batch_size 40 --use_checkpointing
+                python ppft_finetune.py --pdb_path $pdb_dir/"$pdb" --output_dir ./adjoint_sweep/"$pdb"_N${N_rollout}_t${mid_t} --p_fold_target "$p_fold_target" --rollout_config_path ./adjoint_N${N_rollout}_t${mid_t}.yaml --seed $seed --n_epochs 200 --batch_size 100 --use_checkpointing
             done
         done
     done
