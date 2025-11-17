@@ -278,7 +278,7 @@ def finetune_with_target(
         if i % 20 == 0:
             with torch.random.fork_rng():
                 # fork_rng because generate_batch called during 'validate' sets the random seed to a fixed value.
-                mean_fold = validate(i, num_samples=500)
+                mean_fold = validate(i, num_samples=500, cache_embeds_dir=cache_embeds_dir)
                 val_iterations.append(i)
                 val_mean_foldedness.append(mean_fold)
 
